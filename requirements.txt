@@ -7,3 +7,5 @@ drf-spectacular==0.27.1
 Pillow==10.2.0
 psycopg2-binary==2.9.9
 python-dotenv==1.0.1
+numpy==2.3.2
+scipy==1.14.1

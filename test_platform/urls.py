@@ -10,6 +10,7 @@ urlpatterns = [
     # API endpoints
     path('api/v1/', include('users.urls')),
     path('api/v1/', include('questions.urls')),
+    path('api/v1/question-banks/', include('question_banks.urls')),
     
     # API documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

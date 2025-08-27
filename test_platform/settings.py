@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     # Local apps
     'users',
     'questions',
+    'question_banks',
 ]
 
 MIDDLEWARE = [
@@ -109,6 +110,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Passport API Configuration
+# Tashqi passport ma'lumotlar bazasi uchun
+USE_MOCK_PASSPORT_API = True  # Test uchun mock service ishlatish
+PASSPORT_API_BASE_URL = 'https://passport.gov.uz/api/v1'  # Haqiqiy API URL
+PASSPORT_API_KEY = ''  # API kalit
+PASSPORT_API_SECRET = ''  # API maxfiy kalit
+
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -154,3 +162,7 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+# Government Passport API Settings - FAQAT REAL API
+# DIQQAT: Mock data ishlatilmaydi, faqat real government API
+GOVERNMENT_API_TIMEOUT = 10  # seconds

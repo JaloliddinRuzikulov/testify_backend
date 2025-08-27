@@ -3,88 +3,67 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 
-class Subject(models.Model):
-    """Subject model for categorizing questions"""
-    name = models.CharField(max_length=100, verbose_name=_('Subject Name'))
-    code = models.CharField(max_length=50, unique=True, verbose_name=_('Subject Code'))
+class Fan(models.Model):
+    """Fan (Subject) model for categorizing questions"""
+    name = models.CharField(max_length=100, verbose_name=_('Fan Name'))
+    code = models.CharField(max_length=50, unique=True, verbose_name=_('Fan Code'))
     description = models.TextField(blank=True, verbose_name=_('Description'))
     
     def __str__(self):
         return self.name
     
     class Meta:
-        verbose_name = _('Subject')
-        verbose_name_plural = _('Subjects')
+        verbose_name = _('Fan')
+        verbose_name_plural = _('Fanlar')
         ordering = ['name']
 
 
-class Topic(models.Model):
-    """Topic model for main topics within subjects"""
-    subject = models.ForeignKey(
-        Subject,
-        on_delete=models.CASCADE,
-        related_name='topics',
-        verbose_name=_('Subject')
-    )
-    name = models.CharField(max_length=300, verbose_name=_('Topic Name'))
-    number = models.PositiveIntegerField(verbose_name=_('Topic Number'))
-    description = models.TextField(blank=True, verbose_name=_('Description'))
-    
-    def __str__(self):
-        return f"{self.number}. {self.name} ({self.subject.name})"
-    
-    class Meta:
-        verbose_name = _('Topic')
-        verbose_name_plural = _('Topics')
-        ordering = ['subject__name', 'number']
-        unique_together = ['subject', 'number']
-
-
-class Section(models.Model):
-    """Section model for sub-sections within topics"""
-    topic = models.ForeignKey(
-        Topic, 
+class Paragraph(models.Model):
+    """Paragraph model for organizing questions within fans"""
+    fan = models.ForeignKey(
+        Fan, 
         on_delete=models.CASCADE, 
-        related_name='sections',
-        verbose_name=_('Topic')
+        related_name='paragraphs',
+        verbose_name=_('Fan')
     )
-    name = models.CharField(max_length=200, verbose_name=_('Section Name'))
-    number = models.PositiveIntegerField(verbose_name=_('Section Number'))
+    name = models.CharField(max_length=200, verbose_name=_('Paragraph Name'))
+    number = models.PositiveIntegerField(verbose_name=_('Paragraph Number'))
     description = models.TextField(blank=True, verbose_name=_('Description'))
     
     def __str__(self):
-        return f"{self.topic.number}.{self.number}. {self.name} ({self.topic.subject.name})"
+        return f"§{self.number}. {self.name} ({self.fan.name})"
     
     class Meta:
-        verbose_name = _('Section')
-        verbose_name_plural = _('Sections')
-        ordering = ['topic__subject__name', 'topic__number', 'number']
-        unique_together = ['topic', 'number']
+        verbose_name = _('Paragraph')
+        verbose_name_plural = _('Paragraphlar')
+        ordering = ['fan__name', 'number']
+        unique_together = ['fan', 'number']
 
 
-class Difficulty(models.Model):
-    """Dynamic difficulty levels for questions"""
-    name = models.CharField(max_length=50, unique=True, verbose_name=_('Difficulty Name'))
-    code = models.CharField(max_length=20, unique=True, verbose_name=_('Difficulty Code'))
-    level = models.PositiveIntegerField(unique=True, verbose_name=_('Difficulty Level'), 
-                                        help_text=_('Lower number = easier'))
+class Point(models.Model):
+    """Point model for detailed organization within paragraphs"""
+    paragraph = models.ForeignKey(
+        Paragraph,
+        on_delete=models.CASCADE,
+        related_name='points',
+        verbose_name=_('Paragraph')
+    )
+    name = models.CharField(max_length=300, verbose_name=_('Point Name'))
+    number = models.PositiveIntegerField(verbose_name=_('Point Number'))
     description = models.TextField(blank=True, verbose_name=_('Description'))
-    is_active = models.BooleanField(default=True, verbose_name=_('Is Active'))
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return self.name
+        return f"{self.paragraph.number}.{self.number}. {self.name}"
     
     class Meta:
-        verbose_name = _('Difficulty')
-        verbose_name_plural = _('Difficulties')
-        ordering = ['level']
+        verbose_name = _('Point')
+        verbose_name_plural = _('Pointlar')
+        ordering = ['paragraph__fan__name', 'paragraph__number', 'number']
+        unique_together = ['paragraph', 'number']
 
 
-# Keep for backward compatibility temporarily
 class DifficultyLevel(models.TextChoices):
-    """Difficulty levels for questions - DEPRECATED"""
+    """Difficulty levels for questions"""
     EASY = 'EASY', _('Easy')
     MEDIUM = 'MEDIUM', _('Medium')
     HARD = 'HARD', _('Hard')
@@ -101,47 +80,31 @@ class QuestionStatus(models.TextChoices):
 class Question(models.Model):
     """Question model with LaTeX support"""
     
-    # Basic fields - NEW HIERARCHY: Subject > Topic > Section
-    subject = models.ForeignKey(
-        Subject, 
+    # Basic fields
+    fan = models.ForeignKey(
+        Fan, 
         on_delete=models.CASCADE,
-        null=True,
-        blank=True,
         related_name='questions',
-        verbose_name=_('Subject')
+        verbose_name=_('Fan')
     )
-    topic = models.ForeignKey(
-        Topic,
+    paragraph = models.ForeignKey(
+        Paragraph, 
         on_delete=models.CASCADE,
-        null=True,
-        blank=True,
         related_name='questions',
-        verbose_name=_('Topic')
+        verbose_name=_('Paragraph')
     )
-    section = models.ForeignKey(
-        Section, 
+    point = models.ForeignKey(
+        Point,
         on_delete=models.CASCADE,
         related_name='questions',
-        verbose_name=_('Section'),
+        verbose_name=_('Point'),
         null=True,
         blank=True
     )
-    # Keep old field for backward compatibility
     difficulty = models.CharField(
         max_length=10,
         choices=DifficultyLevel.choices,
         default=DifficultyLevel.MEDIUM,
-        verbose_name=_('Difficulty Level (OLD)'),
-        help_text=_('DEPRECATED - Use difficulty_level instead')
-    )
-    
-    # New dynamic difficulty field
-    difficulty_level = models.ForeignKey(
-        Difficulty,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='questions',
         verbose_name=_('Difficulty Level')
     )
     
@@ -187,9 +150,7 @@ class Question(models.Model):
     review_comment = models.TextField(blank=True, verbose_name=_('Review Comment'))
     
     def __str__(self):
-        if self.subject:
-            return f"Question #{self.id} ({self.subject.name})"
-        return f"Question #{self.id} (No Subject)"
+        return f"Question #{self.id} ({self.fan.name})"
     
     class Meta:
         verbose_name = _('Question')

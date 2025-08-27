@@ -1,5 +1,18 @@
 from django.contrib import admin
-from .models import Subject, Topic, Question, QuestionOption
+from .models import Subject, Topic, Section, Question, QuestionOption, Difficulty
+
+
+@admin.register(Difficulty)
+class DifficultyAdmin(admin.ModelAdmin):
+    """Admin for Difficulty model"""
+    list_display = ('name', 'code', 'level', 'is_active', 'questions_count')
+    list_filter = ('is_active',)
+    search_fields = ('name', 'code')
+    ordering = ('level',)
+    
+    def questions_count(self, obj):
+        return obj.questions.count()
+    questions_count.short_description = 'Questions'
 
 
 class QuestionOptionInline(admin.TabularInline):
@@ -19,17 +32,31 @@ class SubjectAdmin(admin.ModelAdmin):
 @admin.register(Topic)
 class TopicAdmin(admin.ModelAdmin):
     """Admin for Topic model"""
-    list_display = ('name', 'subject')
+    list_display = ('number', 'name', 'subject')
     list_filter = ('subject',)
     search_fields = ('name', 'subject__name')
+    ordering = ('subject__name', 'number')
+
+
+@admin.register(Section)
+class SectionAdmin(admin.ModelAdmin):
+    """Admin for Section model"""
+    list_display = ('number', 'name', 'topic', 'get_subject')
+    list_filter = ('topic__subject', 'topic')
+    search_fields = ('name', 'topic__name', 'topic__subject__name')
+    ordering = ('topic__subject__name', 'topic__number', 'number')
+    
+    def get_subject(self, obj):
+        return obj.topic.subject.name
+    get_subject.short_description = 'Subject'
 
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
     """Admin for Question model"""
-    list_display = ('id', 'subject', 'topic', 'difficulty', 'status', 'created_by', 'created_at')
-    list_filter = ('subject', 'topic', 'difficulty', 'status', 'created_at')
-    search_fields = ('text', 'subject__name', 'topic__name')
+    list_display = ('id', 'subject', 'topic', 'section', 'difficulty', 'status', 'created_by', 'created_at')
+    list_filter = ('subject', 'topic', 'section', 'difficulty', 'status', 'created_at')
+    search_fields = ('text', 'subject__name', 'topic__name', 'section__name')
     readonly_fields = ('created_by', 'created_at', 'updated_at', 'reviewed_by', 'reviewed_at')
     inlines = [QuestionOptionInline]
     

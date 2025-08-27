@@ -27,12 +27,14 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for user profile data"""
+    expert_subject_name = serializers.CharField(source='expert_subject.name', read_only=True)
     
     class Meta:
         model = User
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name',
-            'role', 'bio', 'profile_image', 'date_joined'
+            'role', 'bio', 'profile_image', 'date_joined', 
+            'expert_subject', 'expert_subject_name'
         )
         read_only_fields = ('id', 'date_joined')
 
@@ -80,3 +82,34 @@ class PasswordChangeSerializer(serializers.Serializer):
                 "new_password": "Password fields didn't match."
             })
         return data
+
+
+class FaceRegistrationSerializer(serializers.Serializer):
+    """Serializer for face registration"""
+    face_descriptor = serializers.CharField(required=True)
+    
+    def validate_face_descriptor(self, value):
+        if not value:
+            raise serializers.ValidationError("Face descriptor is required")
+        # Validate it's base64 encoded
+        import base64
+        try:
+            base64.b64decode(value)
+        except Exception:
+            raise serializers.ValidationError("Invalid face descriptor format")
+        return value
+
+
+class FaceLoginSerializer(serializers.Serializer):
+    """Serializer for face authentication"""
+    face_descriptor = serializers.CharField(required=True)
+    
+    def validate_face_descriptor(self, value):
+        if not value:
+            raise serializers.ValidationError("Face descriptor is required")
+        import base64
+        try:
+            base64.b64decode(value)
+        except Exception:
+            raise serializers.ValidationError("Invalid face descriptor format")
+        return value

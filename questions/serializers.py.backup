@@ -1,49 +1,35 @@
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Subject, Topic, Section, Question, QuestionOption, Difficulty
+from .models import Fan, Paragraph, Point, Question, QuestionOption
 
 
-class DifficultySerializer(serializers.ModelSerializer):
-    """Serializer for Difficulty model"""
-    questions_count = serializers.SerializerMethodField()
+class FanSerializer(serializers.ModelSerializer):
+    """Serializer for Fan model"""
     
     class Meta:
-        model = Difficulty
-        fields = ['id', 'name', 'code', 'level', 'description', 'is_active', 
-                  'questions_count', 'created_at', 'updated_at']
-        read_only_fields = ['created_at', 'updated_at']
-    
-    def get_questions_count(self, obj):
-        return obj.questions.filter(status='APPROVED').count()
-
-
-class SubjectSerializer(serializers.ModelSerializer):
-    """Serializer for Subject model"""
-    
-    class Meta:
-        model = Subject
+        model = Fan
         fields = ['id', 'name', 'code', 'description']
 
 
-class TopicSerializer(serializers.ModelSerializer):
-    """Serializer for Topic model"""
-    subject_name = serializers.ReadOnlyField(source='subject.name')
+class ParagraphSerializer(serializers.ModelSerializer):
+    """Serializer for Paragraph model"""
+    fan_name = serializers.ReadOnlyField(source='fan.name')
     
     class Meta:
-        model = Topic
-        fields = ['id', 'subject', 'subject_name', 'number', 'name', 'description']
+        model = Paragraph
+        fields = ['id', 'fan', 'fan_name', 'number', 'name', 'description']
 
 
-class SectionSerializer(serializers.ModelSerializer):
-    """Serializer for Section model"""
-    topic_name = serializers.ReadOnlyField(source='topic.name')
-    topic_number = serializers.ReadOnlyField(source='topic.number')
-    subject_name = serializers.ReadOnlyField(source='topic.subject.name')
+class PointSerializer(serializers.ModelSerializer):
+    """Serializer for Point model"""
+    paragraph_name = serializers.ReadOnlyField(source='paragraph.name')
+    paragraph_number = serializers.ReadOnlyField(source='paragraph.number')
+    fan_name = serializers.ReadOnlyField(source='paragraph.fan.name')
     
     class Meta:
-        model = Section
-        fields = ['id', 'topic', 'topic_name', 'topic_number', 
-                  'subject_name', 'number', 'name', 'description']
+        model = Point
+        fields = ['id', 'paragraph', 'paragraph_name', 'paragraph_number', 
+                  'fan_name', 'number', 'name', 'description']
         
 
 class QuestionOptionSerializer(serializers.ModelSerializer):
@@ -57,19 +43,19 @@ class QuestionOptionSerializer(serializers.ModelSerializer):
 class QuestionListSerializer(serializers.ModelSerializer):
     """Serializer for listing questions"""
     
-    subject_name = serializers.ReadOnlyField(source='subject.name')
-    topic_name = serializers.ReadOnlyField(source='topic.name')
-    topic_number = serializers.ReadOnlyField(source='topic.number')
-    section_name = serializers.ReadOnlyField(source='section.name')
-    section_number = serializers.ReadOnlyField(source='section.number')
+    fan_name = serializers.ReadOnlyField(source='fan.name')
+    paragraph_name = serializers.ReadOnlyField(source='paragraph.name')
+    paragraph_number = serializers.ReadOnlyField(source='paragraph.number')
+    point_name = serializers.ReadOnlyField(source='point.name')
+    point_number = serializers.ReadOnlyField(source='point.number')
     created_by_username = serializers.ReadOnlyField(source='created_by.username')
     reviewed_by_username = serializers.ReadOnlyField(source='reviewed_by.username')
     
     class Meta:
         model = Question
         fields = [
-            'id', 'subject', 'subject_name', 'topic', 'topic_name', 'topic_number',
-            'section', 'section_name', 'section_number',
+            'id', 'fan', 'fan_name', 'paragraph', 'paragraph_name', 'paragraph_number',
+            'point', 'point_name', 'point_number',
             'difficulty', 'text', 'status', 'created_at', 'updated_at',
             'created_by', 'created_by_username', 'reviewed_by', 
             'reviewed_by_username', 'reviewed_at'
@@ -80,24 +66,20 @@ class QuestionDetailSerializer(serializers.ModelSerializer):
     """Serializer for question details"""
     
     options = QuestionOptionSerializer(many=True, read_only=True)
-    subject = SubjectSerializer(read_only=True)
-    topic = TopicSerializer(read_only=True)
-    section = SectionSerializer(read_only=True)
-    difficulty_level = DifficultySerializer(read_only=True)
-    subject_name = serializers.ReadOnlyField(source='subject.name')
-    topic_name = serializers.ReadOnlyField(source='topic.name')
-    topic_number = serializers.ReadOnlyField(source='topic.number')
-    section_name = serializers.ReadOnlyField(source='section.name')
-    section_number = serializers.ReadOnlyField(source='section.number')
+    fan_name = serializers.ReadOnlyField(source='fan.name')
+    paragraph_name = serializers.ReadOnlyField(source='paragraph.name')
+    paragraph_number = serializers.ReadOnlyField(source='paragraph.number')
+    point_name = serializers.ReadOnlyField(source='point.name')
+    point_number = serializers.ReadOnlyField(source='point.number')
     created_by_username = serializers.ReadOnlyField(source='created_by.username')
     reviewed_by_username = serializers.ReadOnlyField(source='reviewed_by.username')
     
     class Meta:
         model = Question
         fields = [
-            'id', 'subject', 'subject_name', 'topic', 'topic_name', 'topic_number',
-            'section', 'section_name', 'section_number', 
-            'difficulty', 'difficulty_level', 'text', 'additional_text', 'image',
+            'id', 'fan', 'fan_name', 'paragraph', 'paragraph_name', 'paragraph_number',
+            'point', 'point_name', 'point_number', 
+            'difficulty', 'text', 'additional_text', 'image',
             'created_by', 'created_by_username', 'created_at', 'updated_at',
             'status', 'reviewed_by', 'reviewed_by_username', 'reviewed_at', 
             'review_comment', 'options'
@@ -120,7 +102,7 @@ class QuestionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
         fields = [
-            'subject', 'topic', 'section', 'difficulty', 'text', 
+            'fan', 'paragraph', 'point', 'difficulty', 'text', 
             'additional_text', 'image', 'options'
         ]
     

@@ -7,7 +7,9 @@ from .serializers import (
     UserSerializer,
     UserCreateSerializer,
     CustomTokenObtainPairSerializer,
-    PasswordChangeSerializer
+    PasswordChangeSerializer,
+    FaceRegistrationSerializer,
+    FaceLoginSerializer
 )
 from .permissions import IsAdminOrSelf, IsAdmin
 
@@ -62,4 +64,58 @@ class UserViewSet(viewsets.ModelViewSet):
             user.save()
             return Response({"status": "password changed successfully"})
 
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def register_face(self, request):
+        """Register face descriptor for current user"""
+        serializer = FaceRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            user = request.user
+            user.face_descriptor = serializer.validated_data['face_descriptor']
+            user.save(update_fields=['face_descriptor'])
+            return Response({"status": "Face registered successfully"})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
+    def face_login(self, request):
+        """Authenticate user with face descriptor"""
+        import base64
+        import numpy as np
+        from rest_framework_simplejwt.tokens import RefreshToken
+        
+        serializer = FaceLoginSerializer(data=request.data)
+        if serializer.is_valid():
+            face_descriptor = serializer.validated_data['face_descriptor']
+            
+            # Find matching user by comparing face descriptors
+            users_with_faces = User.objects.exclude(face_descriptor__isnull=True).exclude(face_descriptor='')
+            
+            for user in users_with_faces:
+                # Compare face descriptors (simplified - in production use proper face comparison)
+                try:
+                    # Decode base64 descriptors
+                    input_desc = np.frombuffer(base64.b64decode(face_descriptor), dtype=np.float32)
+                    stored_desc = np.frombuffer(base64.b64decode(user.face_descriptor), dtype=np.float32)
+                    
+                    # Calculate Euclidean distance
+                    distance = np.linalg.norm(input_desc - stored_desc)
+                    
+                    # Threshold for matching (adjust based on testing)
+                    if distance < 0.6:
+                        # Generate tokens
+                        refresh = RefreshToken.for_user(user)
+                        return Response({
+                            'access': str(refresh.access_token),
+                            'refresh': str(refresh),
+                            'user': UserSerializer(user).data
+                        })
+                except Exception as e:
+                    continue
+            
+            return Response(
+                {"error": "No matching face found"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
