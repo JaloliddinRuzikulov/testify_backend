@@ -149,7 +149,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3001",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
-    "r1.uzbmb.uz",
+    "https://r1.uzbmb.uz",
     "http://127.0.0.1:3030",
     "http://localhost:3030",
     "http://127.0.0.1:3033",
