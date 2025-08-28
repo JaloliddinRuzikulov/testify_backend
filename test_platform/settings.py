@@ -9,9 +9,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-change-this-in-production'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ["r2.uzbmb.uz"]
+ALLOWED_HOSTS = ["r2.uzbmb.uz", "r1.uzbmb.uz", "localhost"]
 
 # Application definition
 INSTALLED_APPS = [
@@ -149,6 +149,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3001",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
+    "https://r2.uzbmb.uz",
     "https://r1.uzbmb.uz",
     "http://127.0.0.1:3030",
     "http://localhost:3030",
