@@ -55,11 +55,33 @@ class SectionAdmin(admin.ModelAdmin):
 class QuestionAdmin(admin.ModelAdmin):
     """Admin for Question model"""
     list_display = ('id', 'subject', 'topic', 'section', 'difficulty', 'status', 'created_by', 'created_at')
-    list_filter = ('subject', 'topic', 'section', 'difficulty', 'status', 'created_at')
-    search_fields = ('text', 'subject__name', 'topic__name', 'section__name')
+    list_filter = ('subject', 'topic', 'section', 'difficulty', 'status', 'question_type', 'created_at')
+    search_fields = ('text', 'reading_text', 'additional_text', 'subject__name', 'topic__name', 'section__name')
     readonly_fields = ('created_by', 'created_at', 'updated_at', 'reviewed_by', 'reviewed_at')
     inlines = [QuestionOptionInline]
-    
+
+    fieldsets = (
+        ('Asosiy ma\'lumotlar', {
+            'fields': ('subject', 'topic', 'section', 'difficulty', 'difficulty_level', 'status')
+        }),
+        ('Savol turi va tarkibi', {
+            'fields': ('question_type', 'text', 'additional_text', 'image'),
+        }),
+        ('Reading Comprehension (faqat READING turi uchun)', {
+            'fields': ('reading_text', 'parent_question', 'question_order'),
+            'classes': ('collapse',),
+            'description': 'Bu maydonlar faqat Reading Comprehension turidagi savollar uchun ishlatiladi'
+        }),
+        ('Ko\'rib chiqish ma\'lumotlari', {
+            'fields': ('reviewed_by', 'reviewed_at', 'review_comment'),
+            'classes': ('collapse',)
+        }),
+        ('Tizim ma\'lumotlari', {
+            'fields': ('created_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
     def save_model(self, request, obj, form, change):
         """Set created_by on new questions"""
         if not change:

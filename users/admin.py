@@ -8,19 +8,37 @@ from .passport_models import PassportData, UserPassportLink, FaceAuthenticationL
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
     """Admin configuration for custom user model"""
-    
+
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
-        (_('Personal info'), {'fields': ('first_name', 'last_name', 'email', 'bio', 'profile_image')}),
-        (_('Role'), {'fields': ('role',)}),
-        (_('Permissions'), {
-            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
+        (_('Shaxsiy ma\'lumotlar'), {
+            'fields': ('first_name', 'last_name', 'email', 'bio', 'profile_image')
         }),
-        (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
+        (_('Rol va mutaxassislik'), {
+            'fields': ('role', 'expert_subject')
+        }),
+        (_('Passport ma\'lumotlari'), {
+            'fields': ('pnfl', 'passport'),
+            'classes': ('collapse',),
+            'description': 'Foydalanuvchining passport ma\'lumotlari'
+        }),
+        (_('Biometrik ma\'lumotlar'), {
+            'fields': ('face_descriptor',),
+            'classes': ('collapse',),
+            'description': 'Yuz tanish uchun base64 encoded descriptor'
+        }),
+        (_('Ruxsatlar'), {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
+            'classes': ('collapse',)
+        }),
+        (_('Muhim sanalar'), {
+            'fields': ('last_login', 'date_joined'),
+            'classes': ('collapse',)
+        }),
     )
-    
-    list_display = ('username', 'email', 'first_name', 'last_name', 'role', 'is_staff')
-    list_filter = ('role', 'is_staff', 'is_superuser', 'is_active')
+
+    list_display = ('username', 'email', 'first_name', 'last_name', 'role', 'expert_subject', 'is_staff')
+    list_filter = ('role', 'is_staff', 'is_superuser', 'is_active', 'expert_subject')
 
 
 @admin.register(PassportData)
