@@ -85,32 +85,57 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating new users"""
-    
+    """Serializer for creating new users - with face auth support"""
+
     password = serializers.CharField(
         write_only=True,
-        required=True,
-        validators=[validate_password]
+        required=False,
+        validators=[validate_password],
+        allow_blank=True
     )
-    password_confirm = serializers.CharField(write_only=True, required=True)
-    
+    password_confirm = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    passport_photo = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
     class Meta:
         model = User
         fields = (
             'username', 'email', 'password', 'password_confirm',
-            'first_name', 'last_name', 'role'
+            'first_name', 'last_name', 'role', 'pnfl', 'passport',
+            'passport_photo', 'expert_subject'
         )
-    
+
     def validate(self, data):
-        if data['password'] != data['password_confirm']:
-            raise serializers.ValidationError({
-                "password": "Password fields didn't match."
-            })
+        # If password provided, check confirmation
+        if data.get('password') and data.get('password_confirm'):
+            if data['password'] != data['password_confirm']:
+                raise serializers.ValidationError({
+                    "password": "Password fields didn't match."
+                })
+
+        # If no password, username will be auto-generated from PINFL
+        if not data.get('username') and data.get('pnfl'):
+            data['username'] = f"user_{data['pnfl']}"
+
+        # Email can be auto-generated if not provided
+        if not data.get('email'):
+            data['email'] = f"{data.get('username', 'user')}@dtm.uz"
+
         return data
-    
+
     def create(self, validated_data):
-        validated_data.pop('password_confirm')
-        user = User.objects.create_user(**validated_data)
+        validated_data.pop('password_confirm', None)
+        validated_data.pop('passport_photo', None)  # Handled separately
+
+        password = validated_data.pop('password', None)
+
+        if password:
+            user = User.objects.create_user(**validated_data, password=password)
+        else:
+            # Create user without password (face auth only)
+            user = User.objects.create(**validated_data)
+            user.set_unusable_password()
+            user.save()
+
         return user
 
 
