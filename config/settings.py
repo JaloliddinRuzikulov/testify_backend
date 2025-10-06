@@ -164,6 +164,20 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3033",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "https://r2.uzbmb.uz",
+    "https://r1.uzbmb.uz",
+    "http://127.0.0.1:3030",
+    "http://localhost:3030",
+    "http://127.0.0.1:3033",
+    "http://localhost:3033",
+]
+
 # API documentation
 SPECTACULAR_SETTINGS = {
     "TITLE": "Test Platform API",
