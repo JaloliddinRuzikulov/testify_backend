@@ -44,8 +44,8 @@ urlpatterns = [
     path('auth/face/enhanced-register/', EnhancedFaceAuthRegisterView.as_view(), name='enhanced_face_register'),
     
     # Government Passport API endpoints
-    path('passport/check/', CheckPersonalizationView.as_view(), name='check_personalization'),
-    path('passport/face-login/', GovernmentFaceLoginView.as_view(), name='government_face_login'),
-    path('passport/profile/', GetUserProfileView.as_view(), name='get_user_profile'),
-    path('passport/link-user/', LinkUserToPassportView.as_view(), name='link_user_to_passport'),
+    path('government/check-personalization/', CheckPersonalizationView.as_view(), name='check_personalization'),
+    path('government/face-login/', GovernmentFaceLoginView.as_view(), name='government_face_login'),
+    path('government/profile/', GetUserProfileView.as_view(), name='get_user_profile'),
+    path('government/link-user/', LinkUserToPassportView.as_view(), name='link_user_to_passport'),
 ]
