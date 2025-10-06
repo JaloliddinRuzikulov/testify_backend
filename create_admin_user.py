@@ -9,7 +9,7 @@ import sys
 import django
 
 # Django settings
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'test_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from django.contrib.auth import get_user_model
@@ -20,21 +20,21 @@ from users.government_passport_service import get_government_passport_service
 
 def create_admin_with_passport():
     """Real passport ma'lumotlari bilan admin user yaratish"""
-    
+
     # Test ma'lumotlari
     PNFL = "51304025740014"
     PASSPORT = "AC1987867"
     USERNAME = "admin_ac1987867"
     PASSWORD = "Admin@2024!"
-    
+
     print(f"Creating admin user with PNFL: {PNFL}, Passport: {PASSPORT}")
-    
+
     try:
         # 1. Government API'dan passport ma'lumotlarini olish
         print("Fetching data from government API...")
         service = get_government_passport_service()
         result = service.get_passport_data(PNFL, PASSPORT)
-        
+
         if result.get('status') != 1:
             print(f"❌ ERROR: Government API'dan ma'lumot olib bo'lmadi - {result.get('message')}")
             print(f"❌ Real PNFL va Passport kerak! Mock data ishlatilmaydi.")
@@ -42,7 +42,7 @@ def create_admin_with_passport():
         else:
             passport_data = result.get('data', {})
             print(f"Successfully fetched passport data for: {passport_data.get('sname')} {passport_data.get('fname')}")
-        
+
         # 2. User yaratish yoki yangilash
         user, user_created = User.objects.update_or_create(
             username=USERNAME,
@@ -58,7 +58,7 @@ def create_admin_with_passport():
                 'passport': PASSPORT
             }
         )
-        
+
         if user_created:
             user.set_password(PASSWORD)
             user.save()
@@ -74,7 +74,7 @@ def create_admin_with_passport():
             user.passport = PASSPORT
             user.save()
             print(f"✅ Admin user updated: {USERNAME}")
-        
+
         # 3. UserProfile yaratish yoki yangilash
         profile, profile_created = UserProfile.objects.update_or_create(
             pnfl=int(PNFL),
@@ -102,12 +102,12 @@ def create_admin_with_passport():
                 'verified_at': timezone.now()
             }
         )
-        
+
         if profile_created:
             print(f"✅ UserProfile created for PNFL: {PNFL}")
         else:
             print(f"✅ UserProfile updated for PNFL: {PNFL}")
-        
+
         # 4. PassportData yaratish (agar kerak bo'lsa)
         passport_obj, passport_created = PassportData.objects.update_or_create(
             pinfl=PNFL,
@@ -125,12 +125,12 @@ def create_admin_with_passport():
                 'expire_date': passport_data.get('matches_date_end_document', '2030-01-01')
             }
         )
-        
+
         if passport_created:
             print(f"✅ PassportData created")
         else:
             print(f"✅ PassportData updated")
-        
+
         print("\n" + "="*60)
         print("✅ ADMIN USER SUCCESSFULLY CREATED!")
         print("="*60)
@@ -147,7 +147,7 @@ def create_admin_with_passport():
         print(f"3. Enter Passport: {PASSPORT}")
         print("4. Look at camera for face authentication")
         print("\n⚠️  Note: Face authentication will use government passport photo")
-        
+
     except Exception as e:
         print(f"❌ Error creating admin user: {str(e)}")
         import traceback

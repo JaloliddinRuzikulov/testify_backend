@@ -7,14 +7,14 @@ import sys
 import django
 
 # Django sozlamalarini yuklash
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'test_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from questions.models import Difficulty
 
 def create_difficulties():
     """Create default difficulty levels"""
-    
+
     difficulties = [
         {
             'name': 'Oson',
@@ -41,7 +41,7 @@ def create_difficulties():
             'description': 'Eng yuqori darajadagi savollar'
         }
     ]
-    
+
     for diff_data in difficulties:
         difficulty, created = Difficulty.objects.get_or_create(
             code=diff_data['code'],

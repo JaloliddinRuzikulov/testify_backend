@@ -416,6 +416,203 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
         bank.save()
         return Response({'message': 'Bank arxivlandi'})
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrExpert], url_path='add-question')
+    def add_question_to_bank(self, request, pk=None):
+        """Add single question to bank"""
+        bank = self.get_object()
+        question_id = request.data.get('question_id')
+
+        if not question_id:
+            return Response(
+                {'error': 'question_id majburiy'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            from questions.models import Question
+            question = Question.objects.get(id=question_id, status='APPROVED')
+
+            # Check if question belongs to bank's subject
+            if question.subject != bank.subject:
+                return Response(
+                    {'error': 'Savol bank faniga mos kelmaydi'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            bank_question, created = BankQuestion.objects.get_or_create(
+                bank=bank,
+                question=question,
+                defaults={'added_by': request.user}
+            )
+
+            if created:
+                return Response({
+                    'message': 'Savol bankga qo\'shildi',
+                    'total_questions': bank.questions_count
+                })
+            else:
+                return Response(
+                    {'error': 'Savol allaqachon bankda mavjud'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        except Question.DoesNotExist:
+            return Response(
+                {'error': 'Savol topilmadi yoki tasdiqlanmagan'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrExpert], url_path='remove-question')
+    def remove_question_from_bank(self, request, pk=None):
+        """Remove single question from bank"""
+        bank = self.get_object()
+        question_id = request.data.get('question_id')
+
+        if not question_id:
+            return Response(
+                {'error': 'question_id majburiy'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            bank_question = BankQuestion.objects.get(
+                bank=bank,
+                question_id=question_id
+            )
+            bank_question.delete()
+            return Response({
+                'message': 'Savol bankdan o\'chirildi',
+                'total_questions': bank.questions_count
+            })
+        except BankQuestion.DoesNotExist:
+            return Response(
+                {'error': 'Savol bankda topilmadi'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAdminOrExpert])
+    def stats(self, request, pk=None):
+        """Get bank statistics"""
+        bank = self.get_object()
+
+        # Get collection progress from BankTopicQuota model
+        quotas = bank.topic_quotas.select_related('topic', 'difficulty').all()
+
+        progress_data = {}
+        total_target = 0
+        total_current = 0
+
+        for quota in quotas:
+            topic_id = quota.topic.id
+            topic_name = quota.topic.name
+            difficulty_code = quota.difficulty.code.lower() if quota.difficulty else 'unknown'
+
+            if topic_id not in progress_data:
+                progress_data[topic_id] = {
+                    'topic_id': topic_id,
+                    'topic_name': topic_name,
+                    'easy': {'current': 0, 'target': 0},
+                    'medium': {'current': 0, 'target': 0},
+                    'hard': {'current': 0, 'target': 0}
+                }
+
+            if difficulty_code in ['easy', 'medium', 'hard']:
+                progress_data[topic_id][difficulty_code] = {
+                    'current': quota.current_count,
+                    'target': quota.target_count
+                }
+                total_target += quota.target_count
+                total_current += quota.current_count
+
+        return Response({
+            'data': {
+                'id': bank.id,
+                'name': bank.name,
+                'description': bank.description,
+                'subject': {
+                    'id': bank.subject.id,
+                    'name': bank.subject.name
+                } if bank.subject else None,
+                'status': bank.status,
+                'limits': list(progress_data.values()),
+                'questions_count': bank.questions_count,
+                'total_required': total_target
+            }
+        })
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAdminOrExpert])
+    def export(self, request, pk=None):
+        """Export bank as LaTeX"""
+        from django.http import HttpResponse
+        import io
+
+        bank = self.get_object()
+
+        # Get all questions in bank
+        bank_questions = BankQuestion.objects.filter(
+            bank=bank,
+            question__status='APPROVED'
+        ).select_related('question').order_by('question__topic__number', 'question__difficulty_level')
+
+        # Generate LaTeX content
+        latex_content = self.generate_latex_content(bank, bank_questions)
+
+        # Create response
+        response = HttpResponse(latex_content, content_type='application/x-tex')
+        response['Content-Disposition'] = f'attachment; filename="{bank.name}.tex"'
+
+        return response
+
+    def generate_latex_content(self, bank, bank_questions):
+        """Generate LaTeX content for bank"""
+        content = []
+
+        # Document header
+        content.append(r'\documentclass[12pt]{article}')
+        content.append(r'\usepackage[utf8]{inputenc}')
+        content.append(r'\usepackage[margin=1in]{geometry}')
+        content.append(r'\usepackage{amsmath}')
+        content.append(r'\usepackage{amssymb}')
+        content.append(r'\usepackage{graphicx}')
+        content.append(r'\usepackage{enumitem}')
+        content.append(r'\title{' + bank.name + '}')
+        content.append(r'\author{' + (bank.subject.name if bank.subject else 'DTM Test Platform') + '}')
+        content.append(r'\date{\today}')
+        content.append(r'\begin{document}')
+        content.append(r'\maketitle')
+        content.append('')
+
+        # Group questions by topic
+        current_topic = None
+        question_number = 1
+
+        for bank_question in bank_questions:
+            question = bank_question.question
+
+            # Add topic header if new topic
+            if current_topic != question.topic.name:
+                current_topic = question.topic.name
+                content.append(f'\\section{{{current_topic}}}')
+                content.append('')
+
+            # Add question
+            content.append(f'\\textbf{{{question_number}.}} {question.text}')
+            content.append('')
+
+            # Add options for multiple choice questions
+            if hasattr(question, 'options') and question.options.exists():
+                content.append(r'\begin{enumerate}[label=\Alph*)]')
+                for option in question.options.all():
+                    content.append(f'\\item {option.text}')
+                content.append(r'\end{enumerate}')
+                content.append('')
+
+            question_number += 1
+
+        content.append(r'\end{document}')
+
+        return '\n'.join(content)
+
 
 class BankOrderViewSet(viewsets.ModelViewSet):
     """Bank Order management"""

@@ -90,8 +90,17 @@ class DifficultyLevel(models.TextChoices):
     HARD = 'HARD', _('Hard')
 
 
+class QuestionType(models.TextChoices):
+    """Question type options"""
+    SINGLE = 'SINGLE', _('Single Choice')
+    MULTIPLE = 'MULTIPLE', _('Multiple Choice')
+    READING = 'READING', _('Reading Comprehension')
+
+
 class QuestionStatus(models.TextChoices):
     """Status options for questions"""
+    DRAFT = 'DRAFT', _('Draft')
+    SUBMITTED = 'SUBMITTED', _('Submitted for Review')
     PENDING = 'PENDING', _('Pending Review')
     APPROVED = 'APPROVED', _('Approved')
     REJECTED = 'REJECTED', _('Rejected')
@@ -126,6 +135,35 @@ class Question(models.Model):
         null=True,
         blank=True
     )
+    # Question type field
+    question_type = models.CharField(
+        max_length=10,
+        choices=QuestionType.choices,
+        default=QuestionType.SINGLE,
+        verbose_name=_('Question Type')
+    )
+
+    # Reading comprehension fields
+    reading_text = models.TextField(
+        blank=True,
+        verbose_name=_('Reading Text'),
+        help_text=_('Main reading text for comprehension questions')
+    )
+    parent_question = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='child_questions',
+        verbose_name=_('Parent Question'),
+        help_text=_('Parent question for reading comprehension sub-questions')
+    )
+    question_order = models.PositiveIntegerField(
+        default=1,
+        verbose_name=_('Question Order'),
+        help_text=_('Order of sub-questions in reading comprehension')
+    )
+
     # Keep old field for backward compatibility
     difficulty = models.CharField(
         max_length=10,
@@ -134,7 +172,7 @@ class Question(models.Model):
         verbose_name=_('Difficulty Level (OLD)'),
         help_text=_('DEPRECATED - Use difficulty_level instead')
     )
-    
+
     # New dynamic difficulty field
     difficulty_level = models.ForeignKey(
         Difficulty,
@@ -144,7 +182,7 @@ class Question(models.Model):
         related_name='questions',
         verbose_name=_('Difficulty Level')
     )
-    
+
     # Content fields (with LaTeX support)
     text = models.TextField(verbose_name=_('Question Text in LaTeX'))
     additional_text = models.TextField(blank=True, verbose_name=_('Additional Information in LaTeX'))
@@ -172,7 +210,7 @@ class Question(models.Model):
     status = models.CharField(
         max_length=10,
         choices=QuestionStatus.choices,
-        default=QuestionStatus.PENDING,
+        default=QuestionStatus.DRAFT,
         verbose_name=_('Status')
     )
     reviewed_by = models.ForeignKey(

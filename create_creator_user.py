@@ -7,7 +7,7 @@ import sys
 import django
 
 # Django setup
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'test_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from users.government_passport_service import get_government_passport_service
@@ -17,16 +17,16 @@ from django.utils import timezone
 
 def create_creator_user(pnfl, passport):
     """Create a creator user with government passport data"""
-    
+
     # Government service'dan passport ma'lumotlarini olish
     service = get_government_passport_service()
-    
+
     print(f'📋 Government API ga so\'rov yuborilmoqda...')
     print(f'   PNFL: {pnfl}')
     print(f'   Passport: {passport}')
-    
+
     result = service.get_passport_data(pnfl, passport)
-    
+
     if result.get('status') == 1:
         passport_info = result.get('data', {})
         print(f'✅ Passport ma\'lumotlari olindi:')
@@ -35,7 +35,7 @@ def create_creator_user(pnfl, passport):
         print(f'   Otasining ismi: {passport_info.get("mname", "")}')
         print(f'   Tug\'ilgan sana: {passport_info.get("birth_date", "")}')
         print(f'   Rasm mavjud: {"Ha" if passport_info.get("photo") else "Yo\'q"}')
-        
+
         # PassportData yaratish yoki yangilash
         passport_data, created = PassportData.objects.update_or_create(
             pinfl=pnfl,
@@ -51,7 +51,7 @@ def create_creator_user(pnfl, passport):
             }
         )
         print(f'✅ PassportData {"yaratildi" if created else "yangilandi"}')
-        
+
         # UserProfile yaratish yoki yangilash
         profile, profile_created = UserProfile.objects.update_or_create(
             pnfl=int(pnfl),
@@ -79,7 +79,7 @@ def create_creator_user(pnfl, passport):
             }
         )
         print(f'✅ UserProfile {"yaratildi" if profile_created else "yangilandi"}')
-        
+
         # User yaratish yoki yangilash
         user, user_created = User.objects.update_or_create(
             username=passport,  # Passport raqami username sifatida
@@ -91,22 +91,22 @@ def create_creator_user(pnfl, passport):
                 'is_active': True
             }
         )
-        
+
         if user_created:
             user.set_password(passport)  # Passport raqami parol sifatida
             user.save()
             print(f'✅ Creator user yaratildi:')
         else:
             print(f'ℹ️ User allaqachon mavjud, ma\'lumotlar yangilandi:')
-        
+
         print(f'   Username: {user.username}')
         print(f'   Password: {passport}')
         print(f'   PNFL: {user.pnfl}')
         print(f'   To\'liq ism: {user.first_name} {user.last_name}')
         print(f'   Role: {user.role}')
-        
+
         return True
-        
+
     else:
         print(f'❌ Xatolik: {result.get("message", "Ma\'lumot topilmadi")}')
         return False
@@ -115,10 +115,10 @@ if __name__ == '__main__':
     # Parametrlar
     pnfl = '50109035550030'
     passport = 'AC2397533'
-    
+
     # User yaratish
     success = create_creator_user(pnfl, passport)
-    
+
     if success:
         print('\n✅ Barcha jarayonlar muvaffaqiyatli yakunlandi!')
     else:

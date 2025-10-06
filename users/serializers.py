@@ -28,6 +28,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for user profile data"""
     expert_subject_name = serializers.CharField(source='expert_subject.name', read_only=True)
+    profile_image = serializers.ImageField(read_only=False, required=False, allow_null=True)
     
     class Meta:
         model = User
@@ -37,6 +38,50 @@ class UserSerializer(serializers.ModelSerializer):
             'expert_subject', 'expert_subject_name'
         )
         read_only_fields = ('id', 'date_joined')
+    
+    def to_representation(self, instance):
+        """Override to add full URL for profile_image and fetch passport photo if needed"""
+        representation = super().to_representation(instance)
+        request = self.context.get('request')
+        
+        # If profile_image exists, return its full URL
+        if instance.profile_image and request:
+            representation['profile_image'] = request.build_absolute_uri(instance.profile_image.url)
+        # If no profile_image but has passport data, try to fetch from government API
+        elif instance.pnfl and instance.passport and not instance.profile_image:
+            from .government_passport_service import GovernmentPassportService
+            import base64
+            from django.core.files.base import ContentFile
+            import logging
+            
+            logger = logging.getLogger(__name__)
+            
+            try:
+                # Get passport photo from government API
+                service = GovernmentPassportService()
+                passport_data = service.get_passport_data(instance.pnfl, instance.passport)
+                
+                if passport_data.get('status') == 1 and passport_data.get('data', {}).get('photo'):
+                    photo_base64 = passport_data['data']['photo']
+                    
+                    # Remove data:image prefix if exists
+                    if photo_base64.startswith('data:image'):
+                        photo_base64 = photo_base64.split(',')[1]
+                    
+                    # Save photo to profile_image field
+                    photo_data = base64.b64decode(photo_base64)
+                    photo_file = ContentFile(photo_data, name=f'passport_{instance.username}.jpg')
+                    instance.profile_image.save(f'passport_{instance.username}.jpg', photo_file, save=True)
+                    
+                    # Return the new profile_image URL
+                    if request:
+                        representation['profile_image'] = request.build_absolute_uri(instance.profile_image.url)
+                    
+                    logger.info(f"Successfully saved passport photo for user {instance.username}")
+            except Exception as e:
+                logger.error(f"Error fetching passport photo for user {instance.username}: {str(e)}")
+        
+        return representation
 
 
 class UserCreateSerializer(serializers.ModelSerializer):

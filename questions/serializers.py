@@ -56,7 +56,7 @@ class QuestionOptionSerializer(serializers.ModelSerializer):
 
 class QuestionListSerializer(serializers.ModelSerializer):
     """Serializer for listing questions"""
-    
+
     subject_name = serializers.ReadOnlyField(source='subject.name')
     topic_name = serializers.ReadOnlyField(source='topic.name')
     topic_number = serializers.ReadOnlyField(source='topic.number')
@@ -64,21 +64,27 @@ class QuestionListSerializer(serializers.ModelSerializer):
     section_number = serializers.ReadOnlyField(source='section.number')
     created_by_username = serializers.ReadOnlyField(source='created_by.username')
     reviewed_by_username = serializers.ReadOnlyField(source='reviewed_by.username')
-    
+    child_questions_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Question
         fields = [
             'id', 'subject', 'subject_name', 'topic', 'topic_name', 'topic_number',
-            'section', 'section_name', 'section_number',
+            'section', 'section_name', 'section_number', 'question_type',
             'difficulty', 'text', 'status', 'created_at', 'updated_at',
-            'created_by', 'created_by_username', 'reviewed_by', 
-            'reviewed_by_username', 'reviewed_at'
+            'created_by', 'created_by_username', 'reviewed_by',
+            'reviewed_by_username', 'reviewed_at', 'child_questions_count'
         ]
+
+    def get_child_questions_count(self, obj):
+        if obj.question_type == 'READING':
+            return obj.child_questions.count()
+        return 0
 
 
 class QuestionDetailSerializer(serializers.ModelSerializer):
     """Serializer for question details"""
-    
+
     options = QuestionOptionSerializer(many=True, read_only=True)
     subject = SubjectSerializer(read_only=True)
     topic = TopicSerializer(read_only=True)
@@ -91,17 +97,30 @@ class QuestionDetailSerializer(serializers.ModelSerializer):
     section_number = serializers.ReadOnlyField(source='section.number')
     created_by_username = serializers.ReadOnlyField(source='created_by.username')
     reviewed_by_username = serializers.ReadOnlyField(source='reviewed_by.username')
-    
+    child_questions = serializers.SerializerMethodField()
+
     class Meta:
         model = Question
         fields = [
             'id', 'subject', 'subject_name', 'topic', 'topic_name', 'topic_number',
-            'section', 'section_name', 'section_number', 
+            'section', 'section_name', 'section_number', 'question_type',
+            'reading_text', 'parent_question', 'question_order',
             'difficulty', 'difficulty_level', 'text', 'additional_text', 'image',
             'created_by', 'created_by_username', 'created_at', 'updated_at',
-            'status', 'reviewed_by', 'reviewed_by_username', 'reviewed_at', 
-            'review_comment', 'options'
+            'status', 'reviewed_by', 'reviewed_by_username', 'reviewed_at',
+            'review_comment', 'options', 'child_questions'
         ]
+
+    def get_child_questions(self, obj):
+        if obj.question_type == 'READING':
+            # Return child questions with their options
+            child_serializer = QuestionDetailSerializer(
+                obj.child_questions.order_by('question_order'),
+                many=True,
+                context=self.context
+            )
+            return child_serializer.data
+        return []
 
 
 class QuestionOptionCreateSerializer(serializers.ModelSerializer):
@@ -114,38 +133,103 @@ class QuestionOptionCreateSerializer(serializers.ModelSerializer):
 
 class QuestionCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating questions with options"""
-    
-    options = QuestionOptionCreateSerializer(many=True)
-    
+
+    options = QuestionOptionCreateSerializer(many=True, required=False)
+    child_questions = serializers.ListField(
+        child=serializers.DictField(),
+        required=False,
+        write_only=True
+    )
+
     class Meta:
         model = Question
         fields = [
-            'subject', 'topic', 'section', 'difficulty', 'text', 
-            'additional_text', 'image', 'options'
+            'subject', 'topic', 'section', 'difficulty', 'question_type',
+            'reading_text', 'parent_question', 'question_order',
+            'text', 'additional_text', 'image', 'options', 'child_questions'
         ]
-    
-    def validate_options(self, options):
-        """Validate that at least one option is marked as correct"""
-        if not any(option.get('is_correct', False) for option in options):
-            raise serializers.ValidationError(
-                "At least one option must be marked as correct."
-            )
-        return options
-    
+
+    def validate(self, attrs):
+        # Validate that subject, topic, and section are provided
+        if not attrs.get('subject'):
+            raise serializers.ValidationError({
+                'subject': 'Fan tanlanishi kerak'
+            })
+
+        if not attrs.get('topic'):
+            raise serializers.ValidationError({
+                'topic': 'Mavzu tanlanishi kerak'
+            })
+
+        if not attrs.get('section'):
+            raise serializers.ValidationError({
+                'section': "Bo'lim tanlanishi kerak"
+            })
+
+        question_type = attrs.get('question_type', 'SINGLE')
+
+        if question_type == 'READING':
+            # For reading questions, we need reading_text and child_questions
+            if not attrs.get('reading_text'):
+                raise serializers.ValidationError({
+                    'reading_text': 'Reading text is required for READING type questions'
+                })
+            if not attrs.get('child_questions'):
+                raise serializers.ValidationError({
+                    'child_questions': 'At least one child question is required for READING type'
+                })
+        else:
+            # For non-reading questions, validate options
+            options = attrs.get('options', [])
+            if not options:
+                raise serializers.ValidationError({
+                    'options': 'Options are required for non-READING questions'
+                })
+            if not any(option.get('is_correct', False) for option in options):
+                raise serializers.ValidationError({
+                    'options': 'At least one option must be marked as correct'
+                })
+
+        return attrs
+
     def create(self, validated_data):
-        # Extract options data
-        options_data = validated_data.pop('options')
-        
+        # Extract options and child questions data
+        options_data = validated_data.pop('options', [])
+        child_questions_data = validated_data.pop('child_questions', [])
+
         # Set created_by to current user
         validated_data['created_by'] = self.context['request'].user
-        
-        # Create question
+
+        # Create main question
         question = Question.objects.create(**validated_data)
-        
-        # Create options
-        for option_data in options_data:
-            QuestionOption.objects.create(question=question, **option_data)
-        
+
+        if question.question_type == 'READING':
+            # Create child questions for reading comprehension
+            for idx, child_data in enumerate(child_questions_data, 1):
+                child_options = child_data.pop('options', [])
+                child_question = Question.objects.create(
+                    parent_question=question,
+                    subject=question.subject,
+                    topic=question.topic,
+                    section=question.section,
+                    difficulty=question.difficulty,
+                    question_type='SINGLE',  # Child questions are single choice
+                    question_order=idx,
+                    text=child_data.get('text', ''),
+                    created_by=self.context['request'].user
+                )
+
+                # Create options for child question
+                for option_data in child_options:
+                    QuestionOption.objects.create(
+                        question=child_question,
+                        **option_data
+                    )
+        else:
+            # Create options for regular question
+            for option_data in options_data:
+                QuestionOption.objects.create(question=question, **option_data)
+
         return question
 
 

@@ -74,7 +74,25 @@ class CanManageUsers(permissions.BasePermission):
 
 class IsAdminOrSelf(permissions.BasePermission):
     """Permission to allow admins or the user themselves"""
-    
+
     def has_object_permission(self, request, view, obj):
         return request.user.is_authenticated and (
             request.user.is_admin or obj == request.user)
+
+
+class CanEditQuestion(permissions.BasePermission):
+    """Permission to allow question owners to edit their own questions"""
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        # Admin and experts can edit any question
+        if request.user.is_admin or request.user.is_expert:
+            return True
+
+        # Creators can only edit their own questions
+        if request.user.is_creator:
+            return obj.created_by == request.user
+
+        return False

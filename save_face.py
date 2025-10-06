@@ -4,7 +4,7 @@ import sys
 import django
 
 # Django setup
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'test_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from users.models import User
@@ -20,7 +20,7 @@ try:
     # Get user
     user = User.objects.get(pnfl=pnfl)
     print(f"Found user: {user.username}")
-    
+
     # Create or update PassportData
     passport_data, created = PassportData.objects.update_or_create(
         pinfl=str(pnfl),
@@ -33,14 +33,14 @@ try:
         }
     )
     print(f"PassportData {'created' if created else 'updated'}")
-    
+
     # Create UserPassportLink
     link, created = UserPassportLink.objects.get_or_create(
         user=user,
         defaults={'passport_data': passport_data}
     )
     print(f"UserPassportLink {'created' if created else 'already exists'}")
-    
+
     # Create or update UserProfile
     profile, created = UserProfile.objects.update_or_create(
         pnfl=int(pnfl),
@@ -54,9 +54,9 @@ try:
         }
     )
     print(f"UserProfile {'created' if created else 'updated'}")
-    
+
     print("\nSuccess! Face image saved as reference for future logins.")
-    
+
 except User.DoesNotExist:
     print(f"User with PNFL {pnfl} does not exist")
 except Exception as e:

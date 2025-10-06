@@ -11,7 +11,7 @@ import requests
 import json
 
 # Django settings
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'test_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from django.utils import timezone
@@ -33,11 +33,11 @@ print(f"Fetching from: {url}")
 try:
     response = requests.get(url, verify=False, timeout=10)
     data = response.json()
-    
+
     if data.get('status') == 1:
         passport_data = data.get('data', {})
         print(f"✅ Successfully fetched data for: {passport_data.get('sname')} {passport_data.get('fname')}")
-        
+
         # 2. User yaratish
         user, created = User.objects.update_or_create(
             username=USERNAME,
@@ -53,11 +53,11 @@ try:
                 'passport': PASSPORT
             }
         )
-        
+
         user.set_password(PASSWORD)
         user.save()
         print(f"✅ Admin user {'created' if created else 'updated'}: {USERNAME}")
-        
+
         # 3. UserProfile yaratish
         profile, _ = UserProfile.objects.update_or_create(
             pnfl=int(PNFL),
@@ -86,7 +86,7 @@ try:
             }
         )
         print(f"✅ UserProfile created/updated")
-        
+
         # 4. PassportData yaratish
         PassportData.objects.update_or_create(
             pinfl=PNFL,
@@ -105,7 +105,7 @@ try:
             }
         )
         print(f"✅ PassportData created/updated")
-        
+
         print("\n" + "="*60)
         print("✅ ADMIN USER SUCCESSFULLY CREATED!")
         print("="*60)
@@ -123,10 +123,10 @@ try:
         print(f"3. Enter Passport: {PASSPORT}")
         print("4. Look at camera for face authentication")
         print("\n✅ Real government passport photo will be used for face matching!")
-        
+
     else:
         print(f"❌ Government API error: {data.get('message', 'Unknown error')}")
-        
+
 except Exception as e:
     print(f"❌ Error: {e}")
     import traceback
